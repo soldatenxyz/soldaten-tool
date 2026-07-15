@@ -1,0 +1,82 @@
+Python 3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)] on win32
+Enter "help" below or click "Help" above for more information.
+import os
+import sys
+import socket
+import datetime
+import random
+import string
+
+def clear():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def get_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return "Bulunamadı"
+
+def random_password(length=16):
+    chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(random.choice(chars) for _ in range(length))
+
+def main():
+    while True:
+        clear()
+        print("=== SOLDATEN MULTI-TOOL ===")
+        print(f"Tarih: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        print(f"Local IP: {get_ip()}")
+        print("\n1. IP Bilgisi Göster")
+        print("2. Rastgele Şifre Üret")
+        print("3. Basit Hesap Makinesi")
+        print("4. Sistem Bilgileri")
+...         print("5. IP Değiştirici Önerileri (VPN)")
+...         print("6. Çıkış")
+...         
+...         secim = input("\nSeçiminizi yapın (1-6): ")
+...         
+...         if secim == "1":
+...             print(f"\n[+] Local IP: {get_ip()}")
+...             input("\nDevam etmek için Enter...")
+...         
+...         elif secim == "2":
+...             uzunluk = int(input("Şifre uzunluğu (varsayılan 16): ") or 16)
+...             print(f"[+] Üretilen Şifre: {random_password(uzunluk)}")
+...             input("\nDevam etmek için Enter...")
+...         
+...         elif secim == "3":
+...             try:
+...                 ifade = input("İşlem girin (örnek: 5*8+2): ")
+...                 print(f"Sonuç: {eval(ifade)}")
+...             except:
+...                 print("Hatalı işlem!")
+...             input("\nDevam etmek için Enter...")
+...         
+...         elif secim == "4":
+...             print("\nSistem Bilgileri:")
+...             print(f"İşletim Sistemi: {os.name}")
+...             print(f"Python Versiyon: {sys.version.split()[0]}")
+...             input("\nDevam etmek için Enter...")
+...         
+...         elif secim == "5":
+...             print("\nIP Değiştirmek için Öneriler:")
+...             print("- ProtonVPN (ücretsiz)")
+...             print("- Mullvad veya Windscribe")
+...             print("- Tor Browser")
+...             print("- Mobil hotspot aç/kapat")
+...             print("NOT: Gerçek IP changer kodla olmaz, VPN kullan.")
+...             input("\nDevam etmek için Enter...")
+...         
+...         elif secim == "6":
+...             print("Görüşürüz kral!")
+...             break
+...         
+        else:
+            print("Geçersiz seçim!")
+            input("\nDevam etmek için Enter...")
+
+if __name__ == "__main__":
