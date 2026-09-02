@@ -1,0 +1,7 @@
+requests
+stem
+PySocks
+cryptography
+qrcode
+pillow
+colorama
