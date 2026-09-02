@@ -17,6 +17,38 @@ try:
 except ImportError:
     winreg = None
 
+# ── Platform-aware yardımcılar ───────────────────
+def cf_exe_path():
+    """Cloudflared binary path — platforma göre"""
+    name = "cloudflared.exe" if IS_WINDOWS else "cloudflared"
+    return os.path.join(os.path.expanduser("~"), ".soldaten", name)
+
+def cf_download_url():
+    """Cloudflared indirme URL'si — platforma ve mimariye göre"""
+    if IS_WINDOWS:
+        return cf_download_url()
+    arch = platform.machine().lower()
+    if "aarch64" in arch or "arm64" in arch:
+        return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64"
+    elif "armv7" in arch or "armv6" in arch:
+        return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm"
+    else:
+        return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
+
+def kill_cloudflared():
+    """Çalışan cloudflared process'lerini öldür"""
+    if IS_WINDOWS:
+        kill_cloudflared()
+    else:
+        subprocess.run(["pkill", "-f", "cloudflared"], capture_output=True)
+
+def kill_pid(pid):
+    """PID ile process öldür"""
+    if IS_WINDOWS:
+        subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+    else:
+        subprocess.run(["kill", "-9", str(pid)], capture_output=True)
+
 # UTF-8 çıktı — sadece hata durumunda replace, QR blokları bozulmasın
 if sys.stdout.encoding and sys.stdout.encoding.lower() not in ('utf-8','utf-8-sig'):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -2525,16 +2557,18 @@ function haritaAc(){
         # ── Cloudflared — token yok, hesap yok ──────
         import re as _re
 
-        CLOUDFLARED_PATH = os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared.exe")
+        CLOUDFLARED_PATH = cf_exe_path()
         os.makedirs(os.path.dirname(CLOUDFLARED_PATH), exist_ok=True)
 
         # Cloudflared exe var mı kontrol et, yoksa indir
         if not os.path.isfile(CLOUDFLARED_PATH):
             spin("Cloudflared indiriliyor (tek seferlik ~30MB)", 3)
-            CF_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+            CF_URL = cf_download_url()
             try:
                 import urllib.request
                 urllib.request.urlretrieve(CF_URL, CLOUDFLARED_PATH)
+                if not IS_WINDOWS:
+                    os.chmod(CLOUDFLARED_PATH, 0o755)
                 info("Cloudflared indirildi.")
             except Exception as e:
                 error(f"Cloudflared indirilemedi: {e}")
@@ -3179,14 +3213,15 @@ h1{{color:#58a6ff;font-size:1.1em;margin-bottom:8px}}
     t.start()
 
     # Cloudflared ile tünel aç
-    CF_EXE = os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared.exe")
+    CF_EXE = cf_exe_path()
     if not os.path.isfile(CF_EXE):
         spin("Cloudflared indiriliyor...", 3)
-        CF_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+        CF_URL = cf_download_url()
         try:
             import urllib.request
             os.makedirs(os.path.dirname(CF_EXE), exist_ok=True)
             urllib.request.urlretrieve(CF_URL, CF_EXE)
+            if not IS_WINDOWS: os.chmod(CF_EXE, 0o755)
         except Exception as e:
             error(f"Cloudflared indirilemedi: {e}"); sunucu.shutdown(); pause(); return
 
@@ -3492,14 +3527,14 @@ def menu_takip_linki():
     th = _th5.Thread(target=sunucu.serve_forever, daemon=True)
     th.start()
 
-    CF_EXE = os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared.exe")
+    CF_EXE = cf_exe_path()
     if not os.path.isfile(CF_EXE):
         spin("Cloudflared indiriliyor...", 3)
         try:
             import urllib.request
             os.makedirs(os.path.dirname(CF_EXE), exist_ok=True)
             urllib.request.urlretrieve(
-                "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
+                cf_download_url(),
                 CF_EXE)
         except Exception as e:
             error(f"Cloudflared indirilemedi: {e}"); sunucu.shutdown(); pause(); return
@@ -3818,14 +3853,15 @@ margin:0 auto 16px}}@keyframes spin{{to{{transform:rotate(360deg)}}}}</style>
     th.start()
 
     # Cloudflared tünel
-    CF_EXE = os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared.exe")
+    CF_EXE = cf_exe_path()
     if not os.path.isfile(CF_EXE):
         spin("Cloudflared indiriliyor...", 3)
-        CF_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+        CF_URL = cf_download_url()
         try:
             import urllib.request
             os.makedirs(os.path.dirname(CF_EXE), exist_ok=True)
             urllib.request.urlretrieve(CF_URL, CF_EXE)
+            if not IS_WINDOWS: os.chmod(CF_EXE, 0o755)
         except Exception as e:
             error(f"Cloudflared indirilemedi: {e}"); sunucu.shutdown(); pause(); return
 
@@ -4141,14 +4177,17 @@ def menu_uzak_ekran():
             c3 = _count[0]
         if c3 > 0:
             if confirm("Klasoru ac?"):
-                subprocess.Popen(["explorer", SAVE_DIR])
+                if IS_WINDOWS:
+                    subprocess.Popen(["explorer", SAVE_DIR])
+                else:
+                    subprocess.Popen(["xdg-open", SAVE_DIR])
         else:
             warn("Goruntu alinmadi.")
         pause()
 
     # ── MOD 1: Cloudflare ────────────────────────
     if s == "1":
-        CF_EXE = os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared.exe")
+        CF_EXE = cf_exe_path()
         os.makedirs(os.path.dirname(CF_EXE), exist_ok=True)
 
         if not os.path.isfile(CF_EXE):
@@ -4156,7 +4195,7 @@ def menu_uzak_ekran():
             try:
                 import urllib.request as _ur
                 _ur.urlretrieve(
-                    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
+                    cf_download_url(),
                     CF_EXE
                 )
                 info("Cloudflared indirildi.")
@@ -4508,9 +4547,8 @@ def menu_canli_izle():
 
     # ── Cloudflare tüneli ────────────────────────
     # Önceki cloudflared process'i temizle
-    subprocess.run(["taskkill", "/F", "/IM", "cloudflared.exe"],
-                   capture_output=True)
-    CF_EXE = os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared.exe")
+    kill_cloudflared()
+    CF_EXE = cf_exe_path()
     os.makedirs(os.path.dirname(CF_EXE), exist_ok=True)
 
     if not os.path.isfile(CF_EXE):
@@ -4518,7 +4556,7 @@ def menu_canli_izle():
         try:
             import urllib.request as _ur_d
             _ur_d.urlretrieve(
-                "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
+                cf_download_url(),
                 CF_EXE
             )
             info("Cloudflared indirildi.")
@@ -4896,7 +4934,7 @@ def menu_cift_kamera():
             sys.stdout.write("  "+GREEN+"".join(d2 if c else b2 for c in row)+R+"\n")
         sys.stdout.flush()
 
-    subprocess.run(["taskkill","/F","/IM","cloudflared.exe"], capture_output=True)
+    kill_cloudflared()
     # Önceki oturumdan kalan portu temizle
     try:
         import subprocess as _sp_ck
@@ -4909,9 +4947,9 @@ def menu_cift_kamera():
                 parts = line.split()
                 pid = parts[-1]
                 if pid.isdigit() and int(pid) != os.getpid():
-                    _sp_ck.run(["taskkill", "/F", "/PID", pid], capture_output=True)
+                    kill_pid(pid)
     except: pass
-    CF_EXE = os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared.exe")
+    CF_EXE = cf_exe_path()
     os.makedirs(os.path.dirname(CF_EXE), exist_ok=True)
 
     if not os.path.isfile(CF_EXE):
@@ -4919,7 +4957,7 @@ def menu_cift_kamera():
         try:
             import urllib.request as _ur_ck
             _ur_ck.urlretrieve(
-                "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe",
+                cf_download_url(),
                 CF_EXE)
             info("Cloudflared indirildi.")
         except Exception as e:
