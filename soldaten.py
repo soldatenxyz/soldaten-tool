@@ -26,7 +26,7 @@ def cf_exe_path():
 def cf_download_url():
     """Cloudflared indirme URL'si — platforma ve mimariye göre"""
     if IS_WINDOWS:
-        return cf_download_url()
+        return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
     arch = platform.machine().lower()
     if "aarch64" in arch or "arm64" in arch:
         return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64"
@@ -38,7 +38,7 @@ def cf_download_url():
 def kill_cloudflared():
     """Çalışan cloudflared process'lerini öldür"""
     if IS_WINDOWS:
-        kill_cloudflared()
+        subprocess.run(["taskkill", "/F", "/IM", "cloudflared.exe"], capture_output=True)
     else:
         subprocess.run(["pkill", "-f", "cloudflared"], capture_output=True)
 
@@ -2591,9 +2591,19 @@ function haritaAc(){
         # URL'yi çıktıdan yakala (trycloudflare.com domain'i)
         public_url = None
         import re as _re2
-        deadline = time.time() + 20
+        deadline = time.time() + 45
+        import queue as _q25
+        _lines25 = _q25.Queue()
+        def _read25(stream):
+            try:
+                for _l in iter(stream.readline, b""): _lines25.put(_l.decode("utf-8", errors="replace"))
+            except: pass
+        import threading as _thr25
+        if cf_proc.stdout: _thr25.Thread(target=_read25, args=(cf_proc.stdout,), daemon=True).start()
+        if cf_proc.stderr: _thr25.Thread(target=_read25, args=(cf_proc.stderr,), daemon=True).start()
         while time.time() < deadline:
-            line = cf_proc.stderr.readline().decode("utf-8", errors="replace")
+            try: line = _lines25.get(timeout=1)
+            except: continue
             m = _re2.search(r'https://[a-zA-Z0-9\-]+\.trycloudflare\.com', line)
             if m:
                 public_url = m.group(0)
@@ -3234,9 +3244,18 @@ h1{{color:#58a6ff;font-size:1.1em;margin-bottom:8px}}
     # URL'yi yakala
     import re as _re4
     public_url = None
-    deadline = time.time() + 20
+    deadline = time.time() + 45
+    import queue as _q_qrd; _lines_qrd = _q_qrd.Queue()
+    def _read_qrd(s):
+        try:
+            for _l in iter(s.readline, b""): _lines_qrd.put(_l.decode("utf-8", errors="replace"))
+        except: pass
+    import threading as _thr_qrd
+    if cf_proc.stdout: _thr_qrd.Thread(target=_read_qrd, args=(cf_proc.stdout,), daemon=True).start()
+    if cf_proc.stderr: _thr_qrd.Thread(target=_read_qrd, args=(cf_proc.stderr,), daemon=True).start()
     while time.time() < deadline:
-        line = cf_proc.stderr.readline().decode("utf-8", errors="replace")
+        try: line = _lines_qrd.get(timeout=1)
+        except: continue
         m = _re4.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
         if m:
             public_url = m.group(0); break
@@ -3545,9 +3564,19 @@ def menu_takip_linki():
         stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     public_url = None
-    deadline = time.time() + 20
+    deadline = time.time() + 45
+    import queue as _q_cf
+    _lines_cf = _q_cf.Queue()
+    def _read_cf(stream):
+        try:
+            for _l in iter(stream.readline, b''): _lines_cf.put(_l.decode('utf-8', errors='replace'))
+        except: pass
+    import threading as _thr_cf
+    if cf_p.stdout: _thr_cf.Thread(target=_read_cf, args=(cf_p.stdout,), daemon=True).start()
+    if cf_p.stderr: _thr_cf.Thread(target=_read_cf, args=(cf_p.stderr,), daemon=True).start()
     while time.time() < deadline:
-        line = cf_p.stderr.readline().decode("utf-8", errors="replace")
+        try: line = _lines_cf.get(timeout=1)
+        except: continue
         m = _re5.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
         if m: public_url = m.group(0); break
 
@@ -3872,9 +3901,19 @@ margin:0 auto 16px}}@keyframes spin{{to{{transform:rotate(360deg)}}}}</style>
     )
 
     public_url = None
-    deadline = time.time() + 20
+    deadline = time.time() + 45
+    import queue as _q_cf
+    _lines_cf = _q_cf.Queue()
+    def _read_cf(stream):
+        try:
+            for _l in iter(stream.readline, b''): _lines_cf.put(_l.decode('utf-8', errors='replace'))
+        except: pass
+    import threading as _thr_cf
+    if cf_p.stdout: _thr_cf.Thread(target=_read_cf, args=(cf_p.stdout,), daemon=True).start()
+    if cf_p.stderr: _thr_cf.Thread(target=_read_cf, args=(cf_p.stderr,), daemon=True).start()
     while time.time() < deadline:
-        line = cf_p.stderr.readline().decode("utf-8", errors="replace")
+        try: line = _lines_cf.get(timeout=1)
+        except: continue
         m = _re5.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
         if m: public_url = m.group(0); break
 
@@ -4198,6 +4237,7 @@ def menu_uzak_ekran():
                     cf_download_url(),
                     CF_EXE
                 )
+                if not IS_WINDOWS: os.chmod(CF_EXE, 0o755)
                 info("Cloudflared indirildi.")
             except Exception as e:
                 error(f"Cloudflared indirilemedi: {e}")
@@ -4210,9 +4250,19 @@ def menu_uzak_ekran():
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         public_url = None
-        deadline   = time.time() + 25
+        deadline   = time.time() + 45
+        import queue as _q29
+        _lines29 = _q29.Queue()
+        def _read29(stream):
+            try:
+                for _l in iter(stream.readline, b""): _lines29.put(_l.decode("utf-8", errors="replace"))
+            except: pass
+        import threading as _thr29
+        if cf_proc.stdout: _thr29.Thread(target=_read29, args=(cf_proc.stdout,), daemon=True).start()
+        if cf_proc.stderr: _thr29.Thread(target=_read29, args=(cf_proc.stderr,), daemon=True).start()
         while time.time() < deadline:
-            line = cf_proc.stderr.readline().decode("utf-8", errors="replace")
+            try: line = _lines29.get(timeout=1)
+            except: continue
             m    = _re_k.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
             if m:
                 public_url = m.group(0); break
@@ -4571,9 +4621,18 @@ def menu_canli_izle():
         stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     public_url = None
-    deadline   = time.time() + 25
+    deadline   = time.time() + 45
+    import queue as _q_d; _lines_d = _q_d.Queue()
+    def _read_d(s):
+        try:
+            for _l in iter(s.readline, b""): _lines_d.put(_l.decode("utf-8", errors="replace"))
+        except: pass
+    import threading as _thr_d
+    if cf_proc.stdout: _thr_d.Thread(target=_read_d, args=(cf_proc.stdout,), daemon=True).start()
+    if cf_proc.stderr: _thr_d.Thread(target=_read_d, args=(cf_proc.stderr,), daemon=True).start()
     while time.time() < deadline:
-        line = cf_proc.stderr.readline().decode("utf-8", errors="replace")
+        try: line = _lines_d.get(timeout=1)
+        except: continue
         m    = _re_d.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
         if m:
             public_url = m.group(0); break
@@ -4970,10 +5029,27 @@ def menu_cift_kamera():
         [CF_EXE, "tunnel", "--url", f"http://localhost:{PORT_CK}", "--no-autoupdate"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     public_url = None
-    deadline = time.time() + 25
+    deadline = time.time() + 45
+    import queue as _q_ck
+    _lines_ck = _q_ck.Queue()
+
+    def _read_stream(stream):
+        try:
+            for line in iter(stream.readline, b""):
+                _lines_ck.put(line.decode("utf-8", errors="replace"))
+        except: pass
+
+    import threading as _thr_url
+    if cf_proc.stdout:
+        _thr_url.Thread(target=_read_stream, args=(cf_proc.stdout,), daemon=True).start()
+    if cf_proc.stderr:
+        _thr_url.Thread(target=_read_stream, args=(cf_proc.stderr,), daemon=True).start()
+
     while time.time() < deadline:
-        line = cf_proc.stderr.readline().decode("utf-8", errors="replace")
-        m    = _re_ck.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
+        try:
+            line = _lines_ck.get(timeout=1)
+        except: continue
+        m = _re_ck.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
         if m: public_url = m.group(0); break
 
     if not public_url:
@@ -5081,7 +5157,15 @@ def main():
         elif action=="INVALID":
             warn("Gecersiz secim."); time.sleep(0.8)
         else:
-            action()
+            try:
+                action()
+            except Exception as _e:
+                import traceback
+                clear()
+                print(f"\n  {RED}[HATA] Secim {choice} calistirilamadi:{R}\n")
+                traceback.print_exc()
+                print()
+                pause()
 
 if __name__=="__main__":
     main()
