@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """
-Soldaten - Linux/Kali uyumluluk katmani.
-Bu dosya soldaten.py'yi hic degistirmeden calistirir,
-sadece Linux'a ozgul duzeltmeleri uygular.
+Soldaten - Linux/Kali giris noktasi.
+soldaten.py'yi hic degistirmez, sadece Linux duzeltmelerini uygular.
 """
-import os, sys, platform, subprocess, threading, queue
+import os, sys, platform, subprocess, threading, queue, time
 
-# Dizin belirleme
 _DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ── 1. Cloudflared yardimci fonksiyonlari patch ──
+# ── Linux cloudflared yardimcilari ───────────────
 def _cf_exe_path():
     return os.path.join(os.path.expanduser("~"), ".soldaten", "cloudflared")
 
@@ -19,8 +17,7 @@ def _cf_download_url():
         return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64"
     elif "armv7" in arch or "armv6" in arch:
         return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm"
-    else:
-        return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
+    return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
 
 def _kill_cloudflared():
     subprocess.run(["pkill", "-f", "cloudflared"], capture_output=True)
@@ -28,113 +25,126 @@ def _kill_cloudflared():
 def _kill_pid(pid):
     subprocess.run(["kill", "-9", str(pid)], capture_output=True)
 
-def _cf_ensure():
-    """Cloudflared yoksa indir, varsa chmod +x yap."""
-    import urllib.request
-    exe = _cf_exe_path()
-    os.makedirs(os.path.dirname(exe), exist_ok=True)
-    if not os.path.isfile(exe):
-        print(f"\033[93m  [~] Cloudflared indiriliyor...\033[0m")
-        url = _cf_download_url()
-        urllib.request.urlretrieve(url, exe)
-    os.chmod(exe, 0o755)
-    return exe
+# ── soldaten.py'yi oku ve exec et ────────────────
+_src_path = os.path.join(_DIR, "soldaten.py")
+with open(_src_path, "r", encoding="utf-8") as _f:
+    _src = _f.read()
 
-def _cf_get_url(proc, timeout=45):
-    """Cloudflared ciktisini thread ile okur, trycloudflare URL'yi dondurur."""
-    import re, time
-    q = queue.Queue()
-    def reader(stream):
-        try:
-            for line in iter(stream.readline, b""):
-                q.put(line.decode("utf-8", errors="replace"))
-        except: pass
-    if proc.stdout: threading.Thread(target=reader, args=(proc.stdout,), daemon=True).start()
-    if proc.stderr: threading.Thread(target=reader, args=(proc.stderr,), daemon=True).start()
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            line = q.get(timeout=1)
-        except: continue
-        m = re.search(r"https://[a-zA-Z0-9\-]+\.trycloudflare\.com", line)
-        if m:
-            return m.group(0)
-    return None
+# Linux patch'lerini kaynak koda enjekte et
+_patches = """
+# ── LINUX PATCH (soldaten_linux.py tarafindan enjekte edildi) ──
+import os as _os_lp, platform as _plat_lp, subprocess as _sub_lp
+import threading as _thr_lp, queue as _q_lp, time as _time_lp
 
-# ── 2. soldaten.py'yi yukle, patch et ────────────
-sys.path.insert(0, _DIR)
+IS_WINDOWS = False
 
-# soldaten modülünü import et ama __main__ olarak degil
-import importlib.util as _ilu
-_spec = _ilu.spec_from_file_location("soldaten", os.path.join(_DIR, "soldaten.py"))
-_mod  = _ilu.module_from_spec(_spec)
+def cf_exe_path():
+    return _os_lp.path.join(_os_lp.path.expanduser("~"), ".soldaten", "cloudflared")
 
-# Modülü yuklemeden once patch edilecek fonksiyonlari hazirla
-# (spec.loader.exec_module cagrilmadan once modülün namespace'ine inject et)
-_mod.cf_exe_path    = _cf_exe_path
-_mod.cf_download_url = _cf_download_url
-_mod.kill_cloudflared = _kill_cloudflared
-_mod.kill_pid       = _kill_pid
+def cf_download_url():
+    arch = _plat_lp.machine().lower()
+    if "aarch64" in arch or "arm64" in arch:
+        return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64"
+    elif "armv7" in arch or "armv6" in arch:
+        return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm"
+    return "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
 
-# Modülü yukle (tüm kodları calistirir, ama patch edilmis fonksiyonlarla)
-_spec.loader.exec_module(_mod)
+def kill_cloudflared():
+    _sub_lp.run(["pkill", "-f", "cloudflared"], capture_output=True)
 
-# ── 3. Cloudflared Popen sarmalayici ─────────────
-# Tum CF Popen cagrilarini yakalar, URL'yi dogru sekilde okur
-_original_Popen = subprocess.Popen
+def kill_pid(pid):
+    _sub_lp.run(["kill", "-9", str(pid)], capture_output=True)
 
-class _CFPopen(_original_Popen):
-    """
-    cloudflared tunnel komutlarini yakalar ve
-    _cf_get_url ile URL'yi okur.
-    Bu sınıf doğrudan kullanılmaz; monkey-patch ile uygulanır.
-    """
+def clear():
+    _os_lp.system("clear")
+
+def animated_banner():
+    \"\"\"Linux'ta segfault'u onlemek icin sadece banner() cagir.\"\"\"
+    clear()
+    banner()
+
+# ── LINUX PATCH SONU ──
+"""
+
+# Patch'i kaynak kodun basina ekle (importlardan sonra)
+# IS_WINDOWS ve fonksiyon tanimlamalarini override et
+_patched_src = _src + "\n" + _patches
+
+# Global namespace olustur ve calistir
+_globs = {"__name__": "__not_main__", "__file__": _src_path}
+try:
+    exec(compile(_patched_src, _src_path, "exec"), _globs)
+except SystemExit:
     pass
+except Exception as _e:
+    print(f"\n  [HATA] soldaten.py yuklenemedi: {_e}")
+    import traceback; traceback.print_exc()
+    sys.exit(1)
 
-# ── 4. clear() Linux icin duzelt ─────────────────
-_mod.clear = lambda: os.system("clear")
+# Patch edilmis fonksiyonlari guncelle
+_globs["IS_WINDOWS"] = False
+_globs["cf_exe_path"] = _cf_exe_path
+_globs["cf_download_url"] = _cf_download_url
+_globs["kill_cloudflared"] = _kill_cloudflared
+_globs["kill_pid"] = _kill_pid
+_globs["clear"] = lambda: os.system("clear")
 
-# ── 5. netstat Linux farkliligi ──────────────────
-# menu_cift_kamera icindeki netstat -ano Linux'ta calismaz
-# Orjinal fonksiyonu wrap et
-_original_cift = _mod.menu_cift_kamera
+# animated_banner'i guveli versiyonla degistir
+def _safe_banner():
+    os.system("clear")
+    # Banner ASCII karakterlerle goster (segfault'u onle)
+    GREEN  = "\033[92m"
+    DGREEN = "\033[32m"
+    WHITE  = "\033[97m"
+    GRAY   = "\033[90m"
+    R      = "\033[0m"
+    BOLD   = "\033[1m"
+    DIM    = "\033[2m"
+    print()
+    print(f"  {GREEN}{'═'*62}{R}")
+    print(f"  {BOLD}{GREEN}  SOLDATEN{R}  {DIM}{WHITE}Gizlilik & Kimlik Koruma Araci{R}")
+    print(f"  {GREEN}{'═'*62}{R}")
+    print(f"\n  {DIM}{WHITE}{'·'*24}  Linux / Kali  {'·'*24}{R}")
+    print(f"  {GREEN}{'═'*62}{R}\n")
 
-def _linux_cift_kamera():
-    """
-    menu_cift_kamera'nin Linux uyumlu versiyonu.
-    Port temizleme kismi Linux'a gore duzeltilmis.
-    """
-    import importlib as _imp
-    # subprocess.run("netstat -ano") yerine ss veya lsof kullan
-    _original_subprocess_run = subprocess.run
+_globs["animated_banner"] = _safe_banner
 
-    def _patched_run(args, **kwargs):
-        if isinstance(args, list) and "netstat" in args and "-ano" in args:
-            # Linux'ta ss komutu ile port bilgisi al
-            try:
-                return _original_subprocess_run(
-                    ["ss", "-tlnp"],
-                    **{k:v for k,v in kwargs.items() if k != 'text'},
-                    text=True
-                )
-            except:
-                return _original_subprocess_run(args, **kwargs)
-        return _original_subprocess_run(args, **kwargs)
+# ── netstat -ano Linux uyumu ──────────────────────
+# menu_cift_kamera icindeki netstat -ano yerine ss kullan
+_orig_menu_cift = _globs.get("menu_cift_kamera")
+if _orig_menu_cift:
+    _orig_sub_run = subprocess.run
+    def _linux_cift():
+        def _patched_run(args, **kwargs):
+            if isinstance(args, list) and "netstat" in args:
+                try:
+                    return _orig_sub_run(["ss", "-tlnp"], capture_output=True, text=True)
+                except:
+                    pass
+                # netstat yoksa bos sonuc don
+                import subprocess as _s
+                class _FakeResult:
+                    stdout = ""; returncode = 0
+                return _FakeResult()
+            return _orig_sub_run(args, **kwargs)
+        subprocess.run = _patched_run
+        _globs["subprocess"].run = _patched_run
+        try:
+            _orig_menu_cift()
+        finally:
+            subprocess.run = _orig_sub_run
+            _globs["subprocess"].run = _orig_sub_run
+    _globs["menu_cift_kamera"] = _linux_cift
+    # MENU'yu guncelle
+    if "MENU" in _globs:
+        for _i, _item in enumerate(_globs["MENU"]):
+            if _item[0] == "31":
+                _globs["MENU"][_i] = (_item[0], _item[1], _item[2], _item[3], _linux_cift)
+                break
 
-    subprocess.run = _patched_run
-    try:
-        _original_cift()
-    finally:
-        subprocess.run = _original_subprocess_run
-
-_mod.menu_cift_kamera = _linux_cift_kamera
-
-# ── 6. MENU'yü guncelle ───────────────────────────
-for i, item in enumerate(_mod.MENU):
-    if item[0] == "31":
-        _mod.MENU[i] = (item[0], item[1], item[2], item[3], _linux_cift_kamera)
-        break
-
-# ── 7. Ana giris noktasi ─────────────────────────
+# ── Ana giris ────────────────────────────────────
 if __name__ == "__main__":
-    _mod.main()
+    if "main" not in _globs:
+        print("Hata: main() fonksiyonu bulunamadi.")
+        sys.exit(1)
+    _globs["main"]()
