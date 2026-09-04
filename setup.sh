@@ -118,7 +118,7 @@ cat > "$SCRIPT_DIR/run.sh" << RUNEOF
 #!/bin/bash
 cd "\$(dirname "\${BASH_SOURCE[0]}")"
 source venv/bin/activate
-python soldaten.py
+python soldaten_linux.py
 RUNEOF
 chmod +x "$SCRIPT_DIR/run.sh"
 
@@ -133,5 +133,5 @@ echo ""
 
 read -rp "  Soldaten simdi baslatilsin mi? (e/h): " BASLAT
 if [[ "$BASLAT" =~ ^[eE]$ ]]; then
-    python soldaten.py
+    python soldaten_linux.py
 fi
